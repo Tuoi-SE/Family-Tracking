@@ -1,0 +1,22 @@
+# Expo
+.expo/
+.expo-shared/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Metro
+dist/
+build/
+.cache/
+.expo/web/
+
+# macOS / Windows
+.DS_Store
+Thumbs.db
+
+# TypeScript
+*.tsbuildinfo

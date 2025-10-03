@@ -1,13 +1,13 @@
 import { Router } from 'express';
-import { authMiddleware, requireRole } from '../middleware/auth';
-import { register, login, me, listUsers } from '../controllers/authController';
+import { register, login, getMe } from '../controllers/authController';
+import { authMiddleware } from '../middleware/auth';
 
 const router = Router();
 
-router.post('/auth/register', register);
-router.post('/auth/login', login);
-router.get('/me', authMiddleware, me);
-router.get('/admin/users', authMiddleware, requireRole('admin'), listUsers);
+// @route   /api/auth
+router.post('/register', register);
+router.post('/login', login);
+router.get('/me', authMiddleware, getMe);
 
 export default router;
 

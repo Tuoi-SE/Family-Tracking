@@ -10,16 +10,20 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-navigation/native": "^6.1.18",
     "@react-navigation/native-stack": "^6.11.0",
+    "axios": "^1.12.2",
     "expo": "54.0.11",
     "expo-secure-store": "~15.0.7",
     "nativewind": "^4.0.36",
     "react": "19.1.0",
     "react-native": "0.81.4",
+    "react-native-maps": "1.20.1",
     "react-native-paper": "^5.12.5",
     "react-native-safe-area-context": "~5.6.0",
-    "react-native-screens": "~4.16.0"
+    "react-native-screens": "~4.16.0",
+    "socket.io-client": "^4.8.1"
   },
   "devDependencies": {
     "@types/react": "~19.1.10",

@@ -5,6 +5,8 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { AuthContext } from './AuthContext';
 import AuthScreen from './screens/AuthScreen';
+import LoginScreen from './screens/LoginScreen';
+import RegisterScreen from './screens/RegisterScreen';
 import AdminHome from './screens/AdminHome';
 import UserHome from './screens/UserHome';
 
@@ -12,8 +14,9 @@ const Stack = createNativeStackNavigator();
 
 function AuthStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Auth" component={AuthScreen} />
+    <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Login">
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="Register" component={RegisterScreen} />
     </Stack.Navigator>
   );
 }

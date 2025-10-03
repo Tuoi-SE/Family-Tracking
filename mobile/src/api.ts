@@ -1,61 +1,75 @@
-import * as SecureStore from 'expo-secure-store';
+import axios from 'axios';
+import { User, UserRole } from './types/user';
 
-const DEFAULT_BASE_URL = process.env.EXPO_PUBLIC_API_URL || (__DEV__ ? 'http://localhost:4000' : 'http://localhost:4000');
+const apiClient = axios.create({
+  baseURL: process.env.EXPO_PUBLIC_API_URL || 'http://localhost:4000/api',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
-function buildUrl(path: string, base: string) {
-  // Construct URL safely without mutating properties like protocol/host
+// Function to set the auth token for all subsequent requests
+export const setAuthToken = (token: string | null) => {
+  if (token) {
+    apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  } else {
+    delete apiClient.defaults.headers.common['Authorization'];
+  }
+};
+
+// Wrapper function to handle API errors gracefully
+const handleRequest = async <T>(request: Promise<{ data: T }>): Promise<T> => {
   try {
-    return new URL(path, base).toString();
-  } catch {
-    // Fallback to string concat if base is already full URL
-    if (base.endsWith('/') && path.startsWith('/')) return base + path.slice(1);
-    if (!base.endsWith('/') && !path.startsWith('/')) return `${base}/${path}`;
-    return base + path;
+    const { data } = await request;
+    return data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      // Throw an error with the message from the backend
+      throw new Error(error.response.data.message || 'An unexpected error occurred');
+    }
+    // Throw a generic error for network issues or other problems
+    throw new Error('Network error or server is unreachable');
   }
-}
+};
 
-export async function getToken(): Promise<string | null> {
-  try {
-    return await SecureStore.getItemAsync('auth_token');
-  } catch (e) {
-    return null;
-  }
-}
+// Normalize user objects coming from server (which may use _id instead of id)
+const normalizeUser = (raw: any): User => {
+  return {
+    id: raw.id || raw._id,
+    username: raw.username,
+    fullName: raw.fullName,
+    role: raw.role,
+    tracking: raw.tracking?.map((t: any) => (typeof t === 'string' ? t : t?.toString?.() ?? String(t))) || undefined,
+  };
+};
 
-export async function setToken(token: string): Promise<void> {
-  if (!token) return;
-  await SecureStore.setItemAsync('auth_token', token);
-}
-
-export async function clearToken(): Promise<void> {
-  await SecureStore.deleteItemAsync('auth_token');
-}
-
-export async function apiRequest<T = any>(path: string, { method = 'GET', body, baseUrl }: { method?: string; body?: unknown; baseUrl?: string } = {}): Promise<T> {
-  const token = await getToken();
-  const url = buildUrl(path, baseUrl || DEFAULT_BASE_URL);
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(url, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const message = (json as any)?.message || 'Request failed';
-    const err: any = new Error(message);
-    err.status = res.status;
-    throw err;
-  }
-  return json as T;
-}
+// --- API Definitions ---
 
 export const api = {
-  register: (payload: { email: string; password: string; role?: 'admin' | 'user' }, opts?: any) => apiRequest('/api/auth/register', { method: 'POST', body: payload, ...opts }),
-  login: (payload: { email: string; password: string }, opts?: any) => apiRequest('/api/auth/login', { method: 'POST', body: payload, ...opts }),
-  me: (opts?: any) => apiRequest('/api/me', { method: 'GET', ...opts }),
-  listUsers: (opts?: any) => apiRequest('/api/admin/users', { method: 'GET', ...opts }),
+  // Auth
+  register: (payload: { username: string; password: string; fullName: string; role: UserRole }) => 
+    handleRequest(apiClient.post<{ token: string; user: User }>('/auth/register', payload)),
+  
+  login: (payload: { username: string; password: string }) => 
+    handleRequest(apiClient.post<{ token: string; user: User }>('/auth/login', payload)),
+  
+  getMe: () => handleRequest(apiClient.get<User>('/auth/me')).then(normalizeUser),
+
+  // Users
+  getTrackableUsers: () => handleRequest<any[]>('/users/trackable' as any as Promise<{ data: any[] }>).then((users) => users.map(normalizeUser)),
+
+  updateTrackingList: (payload: { trackableUserId: string; action: 'add' | 'remove' }) =>
+    handleRequest<any>(apiClient.put('/users/profile/tracking', payload)).then(normalizeUser),
+
+  // Users (Admin)
+  listUsers: () => handleRequest<any[]>(apiClient.get('/users')).then((users) => users.map(normalizeUser)),
+
+  // Locations
+  updateLocation: (payload: { userId: string; latitude: number; longitude: number }) =>
+    handleRequest(apiClient.post('/locations', payload)),
+
+  getLatestLocation: (userId: string) =>
+    handleRequest(apiClient.get(`/locations/${userId}`)),
 };
 
 
